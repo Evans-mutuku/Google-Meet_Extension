@@ -68,10 +68,44 @@ async function writeReportToFirestore(report) {
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Validate message type
+  if (!msg || typeof msg !== 'object') {
+    console.error('Invalid message received:', msg);
+    sendResponse({ status: 'error', error: 'Invalid message format' });
+    return false;
+  }
+
   if (msg.type === 'MEETING_REPORT') {
-    writeReportToFirestore(msg.report)
-      .then(() => sendResponse({ status: 'ok' }))
-      .catch(e => sendResponse({ status: 'error', error: e.message }));
+    // Validate report data
+    if (!msg.report || !msg.report.meetingId) {
+      console.error('Invalid meeting report:', msg.report);
+      sendResponse({ status: 'error', error: 'Invalid meeting report format' });
+      return false;
+    }
+
+    console.log('Processing meeting report:', msg.report.meetingId);
+    
+    // Handle the async operation properly
+    (async () => {
+      try {
+        await writeReportToFirestore(msg.report);
+        console.log('Successfully wrote meeting report:', msg.report.meetingId);
+        sendResponse({ status: 'ok' });
+      } catch (error) {
+        console.error('Failed to write meeting report:', error);
+        sendResponse({ 
+          status: 'error', 
+          error: error.message || 'Failed to write meeting report'
+        });
+      }
+    })();
+
+    // Return true to indicate we will send response asynchronously
     return true;
   }
+
+  // Handle unknown message types
+  console.warn('Unknown message type received:', msg.type);
+  sendResponse({ status: 'error', error: 'Unknown message type' });
+  return false;
 }); 
