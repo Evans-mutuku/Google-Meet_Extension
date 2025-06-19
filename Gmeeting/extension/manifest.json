@@ -28,8 +28,9 @@
       "128": "icons/icon128.png"
     }
   },
+  
   "oauth2": {
-    "client_id": "project-742531451792.apps.googleusercontent.com",
+    "client_id": "742531451792-thunjhiq5tvdhbgjke3ro2f0v3rs6ddd.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile"

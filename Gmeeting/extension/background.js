@@ -1,5 +1,7 @@
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js');
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { getAuth} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
 
 // Firebase config
 const firebaseConfig = {
@@ -12,11 +14,11 @@ const firebaseConfig = {
   measurementId: "G-LQ9EKJ7347"
 };
 
-// Initialize Firebase
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
-const db = firebase.firestore();
+const app = initializeApp(firebaseConfig);
+
+// Export Firebase services
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
