@@ -4,59 +4,45 @@ function getMeetingId() {
   return match ? match[1] : null;
 }
 
-// Track attendees
-let attendees = {};
 let trackingEnabled = true;
+let hostAttendee = null;
+let hostJoinTime = null;
+let hostEmailGlobal = null;
+let attendanceInterval = null;
+let currentMeetingId = null;
 
 // Listen for popup toggle
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'TOGGLE_TRACKING') {
     trackingEnabled = message.enabled;
+    if (trackingEnabled) {
+      startHostAttendance();
+    } else {
+      stopHostAttendance();
+    }
     sendResponse({ status: 'ok' });
   }
 });
 
-// Get host email
 function getHostEmail(callback) {
   chrome.runtime.sendMessage({ type: 'GET_HOST_EMAIL' }, (response) => {
     callback(response.email);
   });
 }
 
-// Observe participant list
-function observeParticipants() {
+function getHostDisplayName(hostEmail) {
+  // Try to find a participant node with the host's email
   const participantSelector = '[data-participant-id]';
-  const container = document.querySelector('div[role="list"]');
-  if (!container) return;
-
-  const observer = new MutationObserver(() => {
-    if (!trackingEnabled) return;
-    const nodes = container.querySelectorAll(participantSelector);
-    nodes.forEach(node => {
-      const name = node.getAttribute('aria-label');
-      const email = node.getAttribute('data-participant-id');
-      if (!attendees[email]) {
-        attendees[email] = {
-          fullName: name,
-          email: email,
-          timeJoined: new Date().toISOString(),
-          timeLeft: null,
-          totalTimeAttended: 0
-        };
-        sendAttendeeData(attendees[email]);
-      }
-    });
-    // Check for participants who left
-    Object.keys(attendees).forEach(email => {
-      const stillPresent = Array.from(nodes).some(node => node.getAttribute('data-participant-id') === email);
-      if (!stillPresent && !attendees[email].timeLeft) {
-        attendees[email].timeLeft = new Date().toISOString();
-        attendees[email].totalTimeAttended = (new Date(attendees[email].timeLeft) - new Date(attendees[email].timeJoined)) / 1000;
-        sendAttendeeData(attendees[email]);
-      }
-    });
-  });
-  observer.observe(container, { childList: true, subtree: true });
+  const nodes = document.querySelectorAll(participantSelector);
+  for (const node of nodes) {
+    if (node.getAttribute('data-participant-id') === hostEmail) {
+      return node.getAttribute('aria-label') || hostEmail;
+    }
+  }
+  // Fallback: try to get the name from the Meet header
+  const headerName = document.querySelector('div[role="banner"] span');
+  if (headerName) return headerName.textContent;
+  return hostEmail;
 }
 
 function sendAttendeeData(attendee) {
@@ -67,8 +53,60 @@ function sendAttendeeData(attendee) {
   });
 }
 
-// Start tracking if host
-getHostEmail((hostEmail) => {
-  // You may want to check if hostEmail matches the meeting creator
-  observeParticipants();
+function startHostAttendance() {
+  getHostEmail((hostEmail) => {
+    hostEmailGlobal = hostEmail;
+    let displayName = getHostDisplayName(hostEmail);
+    hostJoinTime = new Date();
+    currentMeetingId = getMeetingId();
+    hostAttendee = {
+      fullName: displayName,
+      email: hostEmail,
+      timeJoined: hostJoinTime.toISOString(),
+      timeLeft: null,
+      totalTimeAttended: 0
+    };
+    sendAttendeeData(hostAttendee);
+    console.log(`[Attendance] Joined meeting: ${currentMeetingId}`);
+    // Optionally, re-assert presence every 30 seconds
+    if (attendanceInterval) clearInterval(attendanceInterval);
+    attendanceInterval = setInterval(() => {
+      sendAttendeeData(hostAttendee);
+    }, 30000);
+  });
+}
+
+function stopHostAttendance() {
+  if (hostAttendee && hostJoinTime) {
+    hostAttendee.timeLeft = new Date().toISOString();
+    hostAttendee.totalTimeAttended = (new Date(hostAttendee.timeLeft) - hostJoinTime) / 1000;
+    sendAttendeeData(hostAttendee);
+    console.log(`[Attendance] Left meeting: ${currentMeetingId}`);
+  }
+  if (attendanceInterval) clearInterval(attendanceInterval);
+  hostAttendee = null;
+  hostJoinTime = null;
+  currentMeetingId = null;
+}
+
+// On script load, always start attendance if tracking is enabled
+if (trackingEnabled) {
+  startHostAttendance();
+}
+
+// Detect meeting switch (URL change)
+let lastMeetingId = getMeetingId();
+setInterval(() => {
+  const newMeetingId = getMeetingId();
+  if (trackingEnabled && newMeetingId && newMeetingId !== lastMeetingId) {
+    // User switched meetings
+    stopHostAttendance();
+    startHostAttendance();
+    lastMeetingId = newMeetingId;
+  }
+}, 2000);
+
+// On leave, update host's timeLeft and totalTimeAttended
+window.addEventListener('beforeunload', () => {
+  stopHostAttendance();
 }); 
