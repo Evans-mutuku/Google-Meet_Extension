@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-import { getAuth} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 
 // Firebase config
@@ -37,12 +37,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Function to save attendee data to Firestore
+// Function to save attendee data to Firestore (modular API)
 function saveAttendeeData(meetingId, attendee) {
-  return db
-    .collection('meetings')
-    .doc(meetingId)
-    .collection('attendees')
-    .doc(attendee.email)
-    .set(attendee, { merge: true });
+  const attendeeRef = doc(db, 'meetings', meetingId, 'attendees', attendee.email);
+  return setDoc(attendeeRef, attendee, { merge: true });
 } 

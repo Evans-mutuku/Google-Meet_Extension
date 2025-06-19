@@ -11,6 +11,18 @@ let hostEmailGlobal = null;
 let attendanceInterval = null;
 let currentMeetingId = null;
 
+// Safe sendMessage wrapper
+function safeSendMessage(message, callback) {
+  try {
+    if (chrome.runtime && chrome.runtime.id) {
+      chrome.runtime.sendMessage(message, callback);
+    }
+  } catch (e) {
+    console.warn('Extension context invalidated, message not sent:', message, e);
+    if (attendanceInterval) clearInterval(attendanceInterval);
+  }
+}
+
 // Listen for popup toggle
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'TOGGLE_TRACKING') {
@@ -25,17 +37,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 function getHostEmail(callback) {
-  chrome.runtime.sendMessage({ type: 'GET_HOST_EMAIL' }, (response) => {
-    callback(response.email);
+  safeSendMessage({ type: 'GET_HOST_EMAIL' }, (response) => {
+    callback(response && response.email ? response.email : 'unknown@unknown');
   });
 }
 
 function getHostDisplayName(hostEmail) {
+  if (!hostEmail || hostEmail === 'unknown@unknown') return hostEmail;
   // Try to find a participant node with the host's email
   const participantSelector = '[data-participant-id]';
   const nodes = document.querySelectorAll(participantSelector);
   for (const node of nodes) {
-    if (node.getAttribute('data-participant-id') === hostEmail) {
+    const participantId = node.getAttribute('data-participant-id');
+    if (participantId && participantId === hostEmail) {
       return node.getAttribute('aria-label') || hostEmail;
     }
   }
@@ -47,7 +61,7 @@ function getHostDisplayName(hostEmail) {
 
 function sendAttendeeData(attendee) {
   const meetingId = getMeetingId();
-  chrome.runtime.sendMessage({
+  safeSendMessage({
     type: 'SAVE_ATTENDEE_DATA',
     payload: { meetingId, attendee }
   });
