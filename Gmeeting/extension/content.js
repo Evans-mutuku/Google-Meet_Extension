@@ -61,23 +61,23 @@ function getMeetingId() {
   
   function getHostEmail(callback) {
     safeSendMessage({ type: 'GET_HOST_EMAIL' }, (response) => {
-      callback(response && response.email ? response.email : 'unknown@unknown');
+      callback(response && response.displayName);
     });
   }
   
-  function getHostDisplayName(hostEmail) {
-    if (!hostEmail || hostEmail === 'unknown@unknown') return hostEmail;
+  function getHostDisplayName(displayName ) {
+    if (!displayName) return displayName ;
     const participantSelector = '[data-participant-id]';
     const nodes = document.querySelectorAll(participantSelector);
     for (const node of nodes) {
       const participantId = node.getAttribute('data-participant-id');
-      if (participantId && participantId === hostEmail) {
-        return node.getAttribute('aria-label') || hostEmail;
+      if (participantId && participantId === displayName ) {
+        return node.getAttribute('aria-label') || displayName ;
       }
     }
     const headerName = document.querySelector('div[role="banner"] span');
     if (headerName) return headerName.textContent;
-    return hostEmail;
+    return displayName ;
   }
   
   function sendAttendeeData(attendee) {
@@ -89,14 +89,14 @@ function getMeetingId() {
   }
   
   function startHostAttendance() {
-    getHostEmail((hostEmail) => {
-      hostEmailGlobal = hostEmail;
-      let displayName = getHostDisplayName(hostEmail);
+    getHostEmail((displayName ) => {
+      hostEmailGlobal = displayName ;
+      let displayName = getHostDisplayName(displayName );
       hostJoinTime = new Date();
       currentMeetingId = getMeetingId();
       hostAttendee = {
         fullName: displayName,
-        email: hostEmail,
+        email: displayName ,
         timeJoined: hostJoinTime.toISOString(),
         timeLeft: null,
         totalTimeAttended: 0
