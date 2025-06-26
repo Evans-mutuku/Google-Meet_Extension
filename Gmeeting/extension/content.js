@@ -1,4 +1,3 @@
-
 // Utility to get meeting ID from URL
 function getMeetingId() {
     const match = window.location.pathname.match(/\/(\w{3}-\w{4}-\w{3})/);
@@ -14,10 +13,10 @@ function getMeetingId() {
   
   // Safe sendMessage wrapper with retry
   function safeSendMessage(message, callback) {
-    if (!chrome.runtime?.id) {
-      console.warn("Extension context not available.");
-      return;
-    }
+    // if (!chrome.runtime?.id) {
+    //   console.warn("Extension context not available.");
+    //   return;
+    // }
   
     try {
       chrome.runtime.sendMessage(message, callback);
@@ -61,23 +60,25 @@ function getMeetingId() {
   
   function getHostEmail(callback) {
     safeSendMessage({ type: 'GET_HOST_EMAIL' }, (response) => {
-      callback(response && response.displayName);
+      // callback(response && response.displayName || "unknown@gmail.com");
+      callback(response && response.email ? response.email : 'unknown@unknown');
     });
   }
   
-  function getHostDisplayName(displayName ) {
-    if (!displayName) return displayName ;
+  function getHostDisplayName(hostEmail ) {
+    // if (!displayName) return displayName ;
+    if (!hostEmail || hostEmail === 'unknown@unknown') return hostEmail;
     const participantSelector = '[data-participant-id]';
     const nodes = document.querySelectorAll(participantSelector);
     for (const node of nodes) {
       const participantId = node.getAttribute('data-participant-id');
-      if (participantId && participantId === displayName ) {
-        return node.getAttribute('aria-label') || displayName ;
+      if (participantId && participantId === hostEmail) {
+        return node.getAttribute('aria-label') || hostEmail ;
       }
     }
     const headerName = document.querySelector('div[role="banner"] span');
     if (headerName) return headerName.textContent;
-    return displayName ;
+    return hostEmail ;
   }
   
   function sendAttendeeData(attendee) {
@@ -89,14 +90,14 @@ function getMeetingId() {
   }
   
   function startHostAttendance() {
-    getHostEmail((displayName ) => {
-      hostEmailGlobal = displayName ;
-      let displayName = getHostDisplayName(displayName );
+    getHostEmail((hostEmail) => {
+      hostEmailGlobal = hostEmail;
+      let resolvedDisplayName = getHostDisplayName(hostEmail);
       hostJoinTime = new Date();
       currentMeetingId = getMeetingId();
       hostAttendee = {
-        fullName: displayName,
-        email: displayName ,
+        fullName: resolvedDisplayName,
+        email: hostEmail,
         timeJoined: hostJoinTime.toISOString(),
         timeLeft: null,
         totalTimeAttended: 0
@@ -139,5 +140,30 @@ function getMeetingId() {
   
   window.addEventListener('beforeunload', () => {
     stopHostAttendance();
+  });
+  
+  // --- Enhancement: Detect meeting exit via DOM and navigation changes ---
+  
+  // Helper to check if user is in a meeting
+  function isInMeeting() {
+    return Boolean(getMeetingId());
+  }
+  
+  // Observe DOM changes to detect meeting exit
+  const observer = new MutationObserver(() => {
+    const inMeeting = isInMeeting();
+    if (!inMeeting && hostAttendee) {
+      stopHostAttendance();
+    }
+  });
+  
+  observer.observe(document.body, { childList: true, subtree: true });
+  
+  // Listen for URL changes (popstate)
+  window.addEventListener('popstate', () => {
+    const inMeeting = isInMeeting();
+    if (!inMeeting && hostAttendee) {
+      stopHostAttendance();
+    }
   });
   
