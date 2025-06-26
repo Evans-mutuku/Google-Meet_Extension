@@ -2,8 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebas
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-
-// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyBqRGfNOCRA06URvZ8VD8Ny8paPTpuqCfw",
   authDomain: "mentorship-74ad7.firebaseapp.com",
@@ -16,18 +14,16 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Export Firebase services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// Listen for messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'SAVE_ATTENDEE_DATA') {
     const { meetingId, attendee } = message.payload;
     saveAttendeeData(meetingId, attendee)
       .then(() => sendResponse({ status: 'success' }))
       .catch(error => sendResponse({ status: 'error', error: error.message }));
-    return true; // Indicates async response
+    return true;
   }
   if (message.type === 'GET_HOST_EMAIL') {
     chrome.identity.getProfileUserInfo((userInfo) => {
@@ -37,7 +33,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Function to save attendee data to Firestore (modular API)
 function saveAttendeeData(meetingId, attendee) {
   const attendeeRef = doc(db, 'meetings', meetingId, 'attendees', attendee.email);
   return setDoc(attendeeRef, attendee, { merge: true });
