@@ -13,10 +13,6 @@ function getMeetingId() {
   
   // Safe sendMessage wrapper with retry
   function safeSendMessage(message, callback) {
-    // if (!chrome.runtime?.id) {
-    //   console.warn("Extension context not available.");
-    //   return;
-    // }
   
     try {
       chrome.runtime.sendMessage(message, callback);
