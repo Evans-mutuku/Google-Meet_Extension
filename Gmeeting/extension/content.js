@@ -56,7 +56,6 @@ function getMeetingId() {
   
   function getHostEmail(callback) {
     safeSendMessage({ type: 'GET_HOST_EMAIL' }, (response) => {
-      // callback(response && response.displayName || "unknown@gmail.com");
       callback(response && response.email ? response.email : 'unknown@unknown');
     });
   }
