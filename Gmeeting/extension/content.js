@@ -61,7 +61,6 @@ function getMeetingId() {
   }
   
   function getHostDisplayName(hostEmail ) {
-    // if (!displayName) return displayName ;
     if (!hostEmail || hostEmail === 'unknown@unknown') return hostEmail;
     const participantSelector = '[data-participant-id]';
     const nodes = document.querySelectorAll(participantSelector);
@@ -137,7 +136,6 @@ function getMeetingId() {
     stopHostAttendance();
   });
   
-  // --- Enhancement: Detect meeting exit via DOM and navigation changes ---
   
   // Helper to check if user is in a meeting
   function isInMeeting() {
